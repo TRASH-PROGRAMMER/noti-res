@@ -13,6 +13,6 @@
         "skipLibCheck": true,// Skip type checking of declaration files
         "forceConsistentCasingInFileNames": true// Force consistent casing in file names
     },
-    "include": ["src/**/*.ts"],// Include all TypeScript files in the src directory
+    "include": ["src/**/*.ts", "application/use-cases/SendNotification.ts", "application/use-cases/RegisterDevice.ts"],// Include all TypeScript files in the src directory
     "exclude": ["node_modules", "dist"]// Exclude node_modules and dist directories from compilation
   }
