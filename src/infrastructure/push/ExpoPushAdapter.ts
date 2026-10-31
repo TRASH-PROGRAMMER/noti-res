@@ -4,12 +4,15 @@ import {
 } from 'expo-server-sdk';
 
 import {
-  NotificationSender,
-  PushMessage,
-  PushResult
+  PushMessage
 } from '../../domain/ports/NotificationSender';
 
-export class ExpoPushAdapter implements NotificationSender {// Implement the NotificationSender interface
+type PushResult = {
+  status: 'sent' | 'failed';
+  error?: string;
+};
+
+export class ExpoPushAdapter {// Implement the notification sender interface
   private expo: Expo;
   constructor(accessToken?: string) {
     this.expo = new Expo({ accessToken });
@@ -22,7 +25,7 @@ export class ExpoPushAdapter implements NotificationSender {// Implement the Not
             error: 'Invalid Expo push token'
         };
     }
-    const playload: ExpoPushMessage = {
+    const payload: ExpoPushMessage = {
       to: message.token,
       sound: 'default',
       title: message.title,
@@ -31,6 +34,23 @@ export class ExpoPushAdapter implements NotificationSender {// Implement the Not
       priority: 'high',
       channelId: 'orders'
     };
-    
 
+    try {
+      const [ticket] = await this.expo.sendPushNotificationsAsync([payload]);
 
+      if (ticket.status === 'ok') {
+        return { status: 'sent' };
+      }
+
+      return {
+        status: 'failed',
+        error: ticket.message || ticket.details?.error || 'Push notification failed'
+      };
+    } catch (error) {
+      return {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Failed to send push notification'
+      };
+    }
+  }
+}

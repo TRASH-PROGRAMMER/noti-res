@@ -24,7 +24,7 @@ export class NotificationController {
   markAsRead = async (req: Request, res: Response) => {
 
     await this.notifications.markAsRead(
-      req.params.id,
+      String(req.params.id),
       req.user!.id
     );
 

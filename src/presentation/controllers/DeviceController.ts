@@ -27,7 +27,7 @@ export class DeviceController {
 
   deactivate = async (req: Request, res: Response) => {
 
-    await this.devices.deactivate(req.params.token);
+    await this.devices.deactivate(String(req.params.token));
 
     return res.status(200).json({
       message: 'Device deactivated'

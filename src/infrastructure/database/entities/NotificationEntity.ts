@@ -15,7 +15,7 @@ export class NotificationEntity {
 @Column({ type: 'text' })
  body!: string;
 
-@Column({type: jsonb, nullable: true})
+@Column({ type: "jsonb", nullable: true })
     data!: Record<string, any> | null;
 
 @Column({name: 'read_at', type: "timestamp", nullable: true })

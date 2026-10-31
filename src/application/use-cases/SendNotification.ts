@@ -1,6 +1,17 @@
 import { DeviceRepository } from '../../domain/ports/DeviceRepository';
 import { NotificationRepository } from '../../domain/ports/NotificationRepository';
-import { NotificationSender } from '../../domain/ports/NotificationSender';
+
+interface NotificationSender {
+  send(input: {
+    token: string;
+    title: string;
+    body: string;
+    data: Record<string, unknown>;
+  }): Promise<{
+    status: 'accepted' | 'failed';
+    ticketId?: string;
+  }>;
+}
 
 interface SendNotificationDTO {
   userId: string;
