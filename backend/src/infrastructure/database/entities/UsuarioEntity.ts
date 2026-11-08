@@ -9,6 +9,8 @@ import {
 
 @Entity({ name: "User" })// Define the notifications table
 @Index(["userId", "createdAt"]) // Create a unique index on the combination of userId, deviceId, and type
+
+// class que representa ula entidad usuario
 export class userEntity {
     @PrimaryGeneratedColumn("uuid")
     id!: string;

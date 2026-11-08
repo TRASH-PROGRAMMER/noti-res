@@ -1,4 +1,4 @@
-export interface Device {
+export interface Device { // interface para representar una entidad de dispositivo
   id: string;
   userId: string;
   expoPushToken: string;
@@ -6,7 +6,7 @@ export interface Device {
   active: boolean;
 }
 
-export interface DeviceRepository {
+export interface DeviceRepository { // / interface para representar el repositorio de dispositivos
   save(device: Omit<Device, 'id'>): Promise<Device>;
 
   findActiveByUser(

@@ -1,4 +1,4 @@
-export interface NotificationRepository {
+export interface NotificationRepository {  // interface para representar el repositorio de notificaciones
   create(data: {
     userId: string;
     title: string;
