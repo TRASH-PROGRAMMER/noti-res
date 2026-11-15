@@ -20,6 +20,29 @@ export class Notificaciondeliveryentity{
   id!: string;
 
   @Column({name: 'notificacion_id', type: 'uuid'})
-   notificationId!: string;
+  notificationId!: string;
+
+  @Column({name: 'Device_id', type: 'uuid'})
+  devicedId!: string;
+  
+  @Column({ name: 'expo_push_token', type: 'varchar', length: 255 })
+  expoPushToken!: string;
+
+  @Column({ name: 'ticket_id', type: 'varchar', nullable: true })
+  ticketId!: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 30,
+    default: DeliveryStatus.PENDING
+  })
+  status!: DeliveryStatus;
+
+
+
+
+
+
+
 }
-    
+  
