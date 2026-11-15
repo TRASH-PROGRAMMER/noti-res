@@ -15,7 +15,7 @@ enum DeliveryStatus {
 
   READ = 'READ'
 }
-enum NotificationStatu {
+ export enum NotificationStatu {
     SENDING = 'SENDING',
     RECEIVED = 'RECEIVED',
     INVALID_TOKEN = 'INVALID_TOKEN',
