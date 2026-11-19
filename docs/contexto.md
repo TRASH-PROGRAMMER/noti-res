@@ -2,7 +2,7 @@
 
 ## Descripción General
 
-Módulo de notificaciones con arquitectura hexagonal (Ports & Adapters), separando la lógica de negocio de Expo, Firebase y Express.
+Módulo de notificaciones con arquitectura hexagonal (Ports & Adapters)+clean arquiteture, separando la lógica de negocio de Expo, Firebase y Express.
 
 La solución tendrá dos responsabilidades principales:
 •Aplicación móvil: gestionar permisos, tokens, notificaciones locales, recepción de Push, interacciones y navegación.

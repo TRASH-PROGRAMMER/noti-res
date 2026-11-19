@@ -13,6 +13,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+res.send('Notifications API is r World!');
+});
+
+
 app.use('/api', notificationRoutes);
 
 async function bootstrap() {
