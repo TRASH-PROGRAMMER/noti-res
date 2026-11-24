@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 
 import { DeviceEntity } from '../infrastructure/database/entities/DeviceEntity';
 import { NotificationEntity } from '../infrastructure/database/entities/NotificationEntity';
+import { NotificationDeliveryEntity } from '../infrastructure/database/entities/NotificationDeliveryEntity';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -15,7 +16,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DATABASE_URL ? undefined : process.env.DB_USER,
   password: process.env.DATABASE_URL ? undefined : process.env.DB_PASSWORD,
   database: process.env.DATABASE_URL ? undefined : process.env.DB_NAME,
-  entities: [DeviceEntity, NotificationEntity],
+  entities: [DeviceEntity, NotificationEntity, NotificationDeliveryEntity],
   migrations: [
     `${__dirname}/../infrastructure/database/migrations/*{.ts,.js}`
   ],

@@ -1,8 +1,10 @@
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { NotificationDeliveryEntity } from '../entities/NotificationDeliveryEntity';
 
 import {
+  CreateDeliveryInput,
+  CreatedDelivery,
   DeliveryRepository,
   DeliveryRecord
 } from '../../../domain/ports/DeliveryRepository';
@@ -14,6 +16,95 @@ export class TypeOrmDeliveryRepository implements DeliveryRepository {
   constructor(
     private repository: Repository<NotificationDeliveryEntity>
   ) {}
+
+  async createMany(
+    deliveries: CreateDeliveryInput[]
+  ): Promise<CreatedDelivery[]> {
+
+    if (!deliveries.length) return [];
+
+    const entities = deliveries.map((item) =>
+      this.repository.create({
+        notificationId: item.notificationId,
+        deviceId: item.deviceId,
+        expoPushToken: item.expoPushToken,
+        status: item.status ?? DeliveryStatus.PENDING,
+        ticketId: null,
+        errorCode: null,
+        errorMessage: null,
+        attempts: 0,
+        nextReceiptCheckAt: null,
+        receiptCheckedAt: null,
+        readAt: null
+      })
+    );
+
+    const saved = await this.repository.save(entities);
+
+    return saved.map((record) => ({
+      id: record.id,
+      notificationId: record.notificationId,
+      deviceId: record.deviceId,
+      expoPushToken: record.expoPushToken,
+      status: record.status
+    }));
+  }
+
+  async markSending(ids: string[]): Promise<void> {
+
+    if (!ids.length) return;
+
+    await this.repository.update(
+      {
+        id: In(ids),
+        status: DeliveryStatus.PENDING
+      },
+      {
+        status: DeliveryStatus.SENDING
+      }
+    );
+  }
+
+  async markReceiptPending(
+    id: string,
+    ticketId: string,
+    nextReceiptCheckAt: Date
+  ): Promise<void> {
+
+    await this.repository.update(
+      {
+        id,
+        status: DeliveryStatus.SENDING
+      },
+      {
+        ticketId,
+        status: DeliveryStatus.RECEIPT_PENDING,
+        nextReceiptCheckAt,
+        errorCode: null,
+        errorMessage: null
+      }
+    );
+  }
+
+  async markFailed(
+    id: string,
+    errorCode: string | null = null,
+    errorMessage: string | null = null
+  ): Promise<void> {
+
+    await this.repository.update(
+      {
+        id,
+        status: In([DeliveryStatus.PENDING, DeliveryStatus.SENDING])
+      },
+      {
+        status: DeliveryStatus.FAILED,
+        errorCode,
+        errorMessage,
+        nextReceiptCheckAt: null
+      }
+    );
+  }
 
   async findPendingReceipts(
     limit: number
