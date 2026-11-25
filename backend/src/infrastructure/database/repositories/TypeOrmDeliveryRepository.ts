@@ -65,10 +65,10 @@ export class TypeOrmDeliveryRepository implements DeliveryRepository {
     );
   }
 
-  async markReceiptPending(
+  async updateTicket(
     id: string,
     ticketId: string,
-    nextReceiptCheckAt: Date
+    nextCheck: Date
   ): Promise<void> {
 
     await this.repository.update(
@@ -79,29 +79,9 @@ export class TypeOrmDeliveryRepository implements DeliveryRepository {
       {
         ticketId,
         status: DeliveryStatus.RECEIPT_PENDING,
-        nextReceiptCheckAt,
+        nextReceiptCheckAt: nextCheck,
         errorCode: null,
         errorMessage: null
-      }
-    );
-  }
-
-  async markFailed(
-    id: string,
-    errorCode: string | null = null,
-    errorMessage: string | null = null
-  ): Promise<void> {
-
-    await this.repository.update(
-      {
-        id,
-        status: In([DeliveryStatus.PENDING, DeliveryStatus.SENDING])
-      },
-      {
-        status: DeliveryStatus.FAILED,
-        errorCode,
-        errorMessage,
-        nextReceiptCheckAt: null
       }
     );
   }
@@ -155,19 +135,26 @@ export class TypeOrmDeliveryRepository implements DeliveryRepository {
     errorMessage: string | null = null
   ): Promise<void> {
 
-    await this.repository.update(
-      {
-        id,
-        status: DeliveryStatus.RECEIPT_CHECKING
-      },
-      {
+    await this.repository
+      .createQueryBuilder()
+      .update(NotificationDeliveryEntity)
+      .set({
         status,
         errorCode,
         errorMessage,
-        receiptCheckedAt: new Date(),
+        receiptCheckedAt: () =>
+          `CASE WHEN "status"::text = '${DeliveryStatus.RECEIPT_CHECKING}' THEN NOW() ELSE "receipt_checked_at" END`,
         nextReceiptCheckAt: null
-      }
-    );
+      })
+      .where('id = :id', { id })
+      .andWhere('status IN (:...allowedStatuses)', {
+        allowedStatuses: [
+          DeliveryStatus.PENDING,
+          DeliveryStatus.SENDING,
+          DeliveryStatus.RECEIPT_CHECKING
+        ]
+      })
+      .execute();
   }
 
   async scheduleReceiptRetry(

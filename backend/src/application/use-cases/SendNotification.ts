@@ -10,6 +10,7 @@ import {
 import { DeliveryStateMachine } from '../../domain/service/DeliveryStateMachine';
 
 const DEFAULT_RECEIPT_CHECK_DELAY_MS = 15 * 60 * 1000;
+const EXPO_BATCH_SIZE = 100;
 
 export interface SendNotificationDTO {
   userId: string;
@@ -71,81 +72,111 @@ export class SendNotification {
       deliveries.map((delivery) => delivery.id)
     );
 
-    const messages: PushMessage[] = deliveries.map((delivery) => ({
-      token: delivery.expoPushToken,
-      title: dto.title,
-      body: dto.body,
-      data: {
-        ...dto.data,
-        notificationId: notification.id,
-        deliveryId: delivery.id
-      }
-    }));
-
-    let tickets: PushTicketResult[];
-    try {
-      tickets = await this.sender.sendBatch(messages);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to send push notification batch';
-
-      for (const delivery of deliveries) {
-        DeliveryStateMachine.assertTransition(
-          DeliveryStatus.SENDING,
-          DeliveryStatus.FAILED
-        );
-        await this.deliveries.markFailed(
-          delivery.id,
-          'SEND_BATCH_ERROR',
-          errorMessage
-        );
-      }
-
-      await this.notifications.updateStatus(notification.id, 'FAILED');
-      throw error;
-    }
-
     let sent = 0;
     let failed = 0;
     let firstTicketId: string | undefined;
 
-    for (let i = 0; i < deliveries.length; i++) {
-      const delivery = deliveries[i];
-      const ticket = tickets[i];
+    for (let offset = 0; offset < deliveries.length; offset += EXPO_BATCH_SIZE) {
+      const batchDeliveries = deliveries.slice(offset, offset + EXPO_BATCH_SIZE);
+      const messages: PushMessage[] = batchDeliveries.map((delivery) => ({
+        token: delivery.expoPushToken,
+        title: dto.title,
+        body: dto.body,
+        data: {
+          ...dto.data,
+          notificationId: notification.id,
+          deliveryId: delivery.id
+        }
+      }));
 
-      if (!ticket || ticket.status === 'error') {
-        DeliveryStateMachine.assertTransition(
-          DeliveryStatus.SENDING,
-          DeliveryStatus.FAILED
-        );
-        await this.deliveries.markFailed(
-          delivery.id,
-          ticket?.errorCode ?? 'MISSING_TICKET',
-          ticket?.errorMessage ?? 'Expo did not return a ticket'
-        );
-        failed++;
-        continue;
+      let tickets: PushTicketResult[];
+      try {
+        tickets = await this.sender.sendBatch(messages);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to send push notification batch';
+
+        for (const pendingDelivery of deliveries.slice(offset)) {
+          DeliveryStateMachine.assertTransition(
+            DeliveryStatus.SENDING,
+            DeliveryStatus.FAILED
+          );
+          await this.deliveries.updateResult(
+            pendingDelivery.id,
+            DeliveryStatus.FAILED,
+            'SEND_BATCH_ERROR',
+            errorMessage
+          );
+        }
+
+        await this.notifications.updateStatus(notification.id, 'FAILED');
+        throw error;
       }
 
-      DeliveryStateMachine.assertTransition(
-        DeliveryStatus.SENDING,
-        DeliveryStatus.RECEIPT_PENDING
-      );
-      const nextReceiptCheckAt = new Date(
-        Date.now() + this.receiptCheckDelayMs
-      );
-      await this.deliveries.markReceiptPending(
-        delivery.id,
-        ticket.ticketId,
-        nextReceiptCheckAt
-      );
+      for (let i = 0; i < batchDeliveries.length; i++) {
+        const delivery = batchDeliveries[i];
+        const ticket = tickets[i];
 
-      if (!firstTicketId) {
-        firstTicketId = ticket.ticketId;
+        if (!ticket) {
+          DeliveryStateMachine.assertTransition(
+            DeliveryStatus.SENDING,
+            DeliveryStatus.FAILED
+          );
+          await this.deliveries.updateResult(
+            delivery.id,
+            DeliveryStatus.FAILED,
+            'MISSING_TICKET',
+            'Expo did not return a ticket'
+          );
+          failed++;
+          continue;
+        }
+
+        if (ticket.status === 'error') {
+          const code = ticket.details?.error ?? 'UNKNOWN_ERROR';
+          const isInvalidToken =
+            code === 'DeviceNotRegistered' || code === 'INVALID_TOKEN';
+
+          if (isInvalidToken) {
+            await this.devices.deactivate(delivery.expoPushToken);
+          }
+
+          const nextStatus = isInvalidToken
+            ? DeliveryStatus.INVALID_TOKEN
+            : DeliveryStatus.FAILED;
+
+          DeliveryStateMachine.assertTransition(
+            DeliveryStatus.SENDING,
+            nextStatus
+          );
+
+          await this.deliveries.updateResult(
+            delivery.id,
+            nextStatus,
+            code,
+            ticket.message
+          );
+          failed++;
+        } else {
+          DeliveryStateMachine.assertTransition(
+            DeliveryStatus.SENDING,
+            DeliveryStatus.RECEIPT_PENDING
+          );
+
+          await this.deliveries.updateTicket(
+            delivery.id,
+            ticket.id,
+            new Date(Date.now() + this.receiptCheckDelayMs)
+          );
+
+          if (!firstTicketId) {
+            firstTicketId = ticket.id;
+          }
+          sent++;
+        }
       }
-      sent++;
     }
 
     const notificationStatus =

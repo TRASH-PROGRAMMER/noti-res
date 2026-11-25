@@ -8,12 +8,14 @@ export interface PushMessage { // interface para representar un mensaje push
 export type PushTicketResult =
   | {
       status: 'ok';
-      ticketId: string;
+      id: string;
     }
   | {
       status: 'error';
-      errorCode?: string;
-      errorMessage: string;
+      message: string;
+      details?: {
+        error?: string;
+      };
     };
 
 export interface NotificationSender {

@@ -30,8 +30,8 @@ export class ExpoPushAdapter implements NotificationSender { // Implement the no
       if (!Expo.isExpoPushToken(message.token)) {
         results[i] = {
           status: 'error',
-          errorCode: 'INVALID_TOKEN',
-          errorMessage: 'Invalid Expo push token'
+          message: 'Invalid Expo push token',
+          details: { error: 'INVALID_TOKEN' }
         };
         continue;
       }
@@ -75,8 +75,8 @@ export class ExpoPushAdapter implements NotificationSender { // Implement the no
           if (!ticket) {
             results[targetIndex] = {
               status: 'error',
-              errorCode: 'MISSING_TICKET',
-              errorMessage: 'Expo did not return a ticket for this message'
+              message: 'Expo did not return a ticket for this message',
+              details: { error: 'MISSING_TICKET' }
             };
             continue;
           }
@@ -84,16 +84,16 @@ export class ExpoPushAdapter implements NotificationSender { // Implement the no
           if (ticket.status === 'ok') {
             results[targetIndex] = {
               status: 'ok',
-              ticketId: ticket.id
+              id: ticket.id
             };
           } else {
             results[targetIndex] = {
               status: 'error',
-              errorCode: ticket.details?.error ?? 'EXPO_TICKET_ERROR',
-              errorMessage:
+              message:
                 ticket.message ||
                 ticket.details?.error ||
-                'Push notification failed'
+                'Push notification failed',
+              details: ticket.details
             };
           }
         }
@@ -106,8 +106,8 @@ export class ExpoPushAdapter implements NotificationSender { // Implement the no
         for (const entry of chunkEntries) {
           results[entry.index] = {
             status: 'error',
-            errorCode: 'EXPO_REQUEST_ERROR',
-            errorMessage
+            message: errorMessage,
+            details: { error: 'EXPO_REQUEST_ERROR' }
           };
         }
       }

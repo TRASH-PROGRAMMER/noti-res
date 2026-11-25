@@ -29,16 +29,10 @@ export interface DeliveryRepository {
 
   markSending(ids: string[]): Promise<void>;
 
-  markReceiptPending(
+  updateTicket(
     id: string,
     ticketId: string,
-    nextReceiptCheckAt: Date
-  ): Promise<void>;
-
-  markFailed(
-    id: string,
-    errorCode?: string | null,
-    errorMessage?: string | null
+    nextCheck: Date
   ): Promise<void>;
 
   findPendingReceipts(
